@@ -3,8 +3,7 @@ var ansi = require('ansi'),
     _ = require('underscore'),
     cuid = require('cuid'),
     Adapter = require('./lib/adapter'),
-    styles = require('./lib/styles'),
-    base;
+    styles = require('./lib/styles');
 
 function toTitleCase(str) {
     return str.replace(/(?:^|-)\w/g, function(match) {
@@ -12,9 +11,9 @@ function toTitleCase(str) {
     });
 }
 
-function printReq(_req, id) {
+function printReq(_req, id, base) {
     cursor
-        .hex(base['04'])
+        .hex(base['07'])
         .write('ID: ' + id + '\n')
         .hex(base['08'])
         .write(_req.method + ' ')
@@ -33,8 +32,6 @@ function printReq(_req, id) {
             .write(e + '\n');
     });
 
-    cursor.write('\n');
-
     cursor
         .hex(base['0A'])
         .write(JSON.stringify(_req.body, null, 4));
@@ -43,9 +40,9 @@ function printReq(_req, id) {
     cursor.reset();
 }
 
-function printRes(_res, id) {
+function printRes(_res, id, base) {
     cursor
-        .hex(base['04'])
+        .hex(base['07'])
         .write('ID: ' + id + '\n')
         .hex(base['08'])
         .write(_res.protocol.toUpperCase() + '/' + _res.version + ' ')
@@ -62,8 +59,6 @@ function printRes(_res, id) {
             .write(e + '\n');
     });
 
-    cursor.write('\n');
-
     cursor
         .hex(base['0A'])
         .write(JSON.stringify(_res.body, null, 4));
@@ -77,10 +72,13 @@ function kaizen(user_config, adapter) {
         style: 'default',
         stdout: true
     };
+    var base;
+
     _.extend(config, user_config);
 
     if (!_.isUndefined(adapter))
         var db = new Adapter(adapter, config);
+
 
     _.isObject(config.style) ? base = config.style : base = styles[config.style]
 
@@ -105,7 +103,7 @@ function kaizen(user_config, adapter) {
             db.save(_req);
 
         if (config.stdout)
-            printReq(_req, id);
+            printReq(_req, id, base);
 
         res.write = function(chunk) {
             chunks.push(chunk);
@@ -128,7 +126,7 @@ function kaizen(user_config, adapter) {
                 db.save(_res);
 
             if (config.stdout)
-                printRes(_res, id);
+                printRes(_res, id, base);
 
             end.apply(res, arguments);
         };
