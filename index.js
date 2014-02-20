@@ -1,7 +1,6 @@
 var ansi = require('ansi'),
     cursor = ansi(process.stdout),
     _ = require('underscore'),
-    cuid = require('cuid'),
     Adapter = require('./lib/adapter'),
     styles = require('./lib/styles');
 
@@ -11,7 +10,7 @@ function toTitleCase(str) {
     });
 }
 
-function printReq(req, id, base) {
+function printReq(req, base) {
     cursor
         .hex(base['08'])
         .write(req.method + ' ')
@@ -38,7 +37,7 @@ function printReq(req, id, base) {
     cursor.reset();
 }
 
-function printRes(res, id, base) {
+function printRes(res, base) {
     cursor
         .hex(base['08'])
         .write(res.protocol.toUpperCase() + '/' + res.version + ' ')
@@ -63,7 +62,7 @@ function printRes(res, id, base) {
     cursor.reset();
 }
 
-function printErr(err, id, base) {
+function printErr(err, base) {
     cursor
         .hex(base['08'])
         .write('Message: ' + err.message + '\nStack: ' + err.stack + '\n');
@@ -91,7 +90,10 @@ exports.error = function(user_config, adapter) {
             message: err.message,
             stack: err.stack
         };
-        printErr(error, req.cuid, base);
+
+        if (config.stdout)
+            printErr(error, base);
+
         if (!_.isUndefined(adapter))
             db.save(error);
 
@@ -127,8 +129,6 @@ exports.log = function(user_config, adapter) {
                 version: req.httpVersion
             }
         };
-        var id = cuid.slug();
-        req.cuid = id;
         var end = res.end;
         var write = res.write;
         var chunks = '';
@@ -137,7 +137,7 @@ exports.log = function(user_config, adapter) {
             db.save(transaction);
 
         if (config.stdout)
-            printReq(transaction.req, id, base);
+            printReq(transaction.req, base);
 
         res.write = function(chunk) {
             chunks += chunk;
@@ -147,6 +147,7 @@ exports.log = function(user_config, adapter) {
         res.end = function(chunk) {
             if (chunk)
                 chunks += chunk;
+
             var body = chunks.toString('utf8');
             transaction.res = {
                 statusCode: res.statusCode,
@@ -155,11 +156,12 @@ exports.log = function(user_config, adapter) {
                 protocol: req.protocol,
                 version: req.httpVersion
             };
+
             if (!_.isUndefined(adapter))
                 db.update(transaction);
 
             if (config.stdout)
-                printRes(transaction.res, id, base);
+                printRes(transaction.res, base);
 
             end.apply(res, arguments);
         };
