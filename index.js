@@ -11,18 +11,16 @@ function toTitleCase(str) {
     });
 }
 
-function printReq(_req, id, base) {
+function printReq(req, id, base) {
     cursor
-        .hex(base['07'])
-        .write('ID: ' + id + '\n')
         .hex(base['08'])
-        .write(_req.method + ' ')
+        .write(req.method + ' ')
         .hex(base['0B'])
-        .write(_req.url + ' ')
+        .write(req.url + ' ')
         .hex(base['08'])
-        .write(_req.protocol.toUpperCase() + '/' + _req.version + '\n');
+        .write(req.protocol.toUpperCase() + '/' + req.version + '\n');
 
-    _.each(_req.headers, function(e, i) {
+    _.each(req.headers, function(e, i) {
         cursor
             .hex(base['0D'])
             .write(toTitleCase(i))
@@ -34,22 +32,20 @@ function printReq(_req, id, base) {
 
     cursor
         .hex(base['0A'])
-        .write(JSON.stringify(_req.body, null, 4));
+        .write(JSON.stringify(req.body, null, 4));
 
     cursor.write('\n\n');
     cursor.reset();
 }
 
-function printRes(_res, id, base) {
+function printRes(res, id, base) {
     cursor
-        .hex(base['07'])
-        .write('ID: ' + id + '\n')
         .hex(base['08'])
-        .write(_res.protocol.toUpperCase() + '/' + _res.version + ' ')
+        .write(res.protocol.toUpperCase() + '/' + res.version + ' ')
         .hex(base['0B'])
-        .write(_res.statusCode + '\n');
+        .write(res.statusCode + '\n');
 
-    _.each(_res.headers, function(e, i) {
+    _.each(res.headers, function(e, i) {
         cursor
             .hex(base['0D'])
             .write(toTitleCase(i))
@@ -61,61 +57,98 @@ function printRes(_res, id, base) {
 
     cursor
         .hex(base['0A'])
-        .write(JSON.stringify(_res.body, null, 4));
+        .write(JSON.stringify(res.body, null, 4));
 
     cursor.write('\n\n');
     cursor.reset();
 }
 
-function kaizen(user_config, adapter) {
+function printErr(err, id, base) {
+    cursor
+        .hex(base['08'])
+        .write('Message: ' + err.message + '\nStack: ' + err.stack + '\n');
+
+    cursor.write('\n');
+    cursor.reset();
+
+}
+
+exports.error = function(user_config, adapter) {
     var config = {
         style: 'default',
         stdout: true
-    };
-    var base;
+    },
+        base;
 
     _.extend(config, user_config);
 
     if (!_.isUndefined(adapter))
         var db = new Adapter(adapter, config);
 
+    _.isObject(config.style) ? base = config.style : base = styles[config.style]
+    return function(err, req, res, next) {
+        var error = {
+            message: err.message,
+            stack: err.stack
+        };
+        printErr(error, req.cuid, base);
+        if (!_.isUndefined(adapter))
+            db.save(error);
+
+
+        next(err);
+    };
+};
+
+
+
+exports.log = function(user_config, adapter) {
+    var config = {
+        style: 'default',
+        stdout: true
+    },
+        base;
+
+    _.extend(config, user_config);
+
+    if (!_.isUndefined(adapter))
+        var db = new Adapter(adapter, config);
 
     _.isObject(config.style) ? base = config.style : base = styles[config.style]
-
     return function(req, res, next) {
-
+        var transaction = {
+            req: {
+                headers: req.headers,
+                params: req.params,
+                body: req.body,
+                method: req.method,
+                url: req.originalUrl,
+                protocol: req.protocol,
+                version: req.httpVersion
+            }
+        };
         var id = cuid.slug();
+        req.cuid = id;
         var end = res.end;
         var write = res.write;
-        var chunks = [];
+        var chunks = '';
 
-        var _req = {
-            headers: req.headers,
-            params: req.params,
-            body: req.body,
-            method: req.method,
-            url: req.originalUrl,
-            protocol: req.protocol,
-            version: req.httpVersion
-
-        };
         if (!_.isUndefined(adapter))
-            db.save(_req);
+            db.save(transaction);
 
         if (config.stdout)
-            printReq(_req, id, base);
+            printReq(transaction.req, id, base);
 
         res.write = function(chunk) {
-            chunks.push(chunk);
+            chunks += chunk;
             write.apply(res, arguments);
         };
 
         res.end = function(chunk) {
-            if (chunk) {
-                chunks.push(chunk);
-            }
-            var body = Buffer.concat(chunks).toString('utf8');
-            var _res = {
+            if (chunk)
+                chunks += chunk;
+            var body = chunks.toString('utf8');
+            transaction.res = {
                 statusCode: res.statusCode,
                 headers: res._headers,
                 body: body,
@@ -123,15 +156,13 @@ function kaizen(user_config, adapter) {
                 version: req.httpVersion
             };
             if (!_.isUndefined(adapter))
-                db.save(_res);
+                db.update(transaction);
 
             if (config.stdout)
-                printRes(_res, id, base);
+                printRes(transaction.res, id, base);
 
             end.apply(res, arguments);
         };
         next();
     };
-}
-
-module.exports = kaizen;
+};
