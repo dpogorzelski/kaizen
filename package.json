@@ -1,6 +1,6 @@
 {
     "name": "kaizen",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "ExpressJS Log Middleware",
     "main": "index.js",
     "repository": {
