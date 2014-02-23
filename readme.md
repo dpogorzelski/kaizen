@@ -18,6 +18,8 @@
 
     var kaizen = require('kaizen');
     
+    var kaizen = new Kaizen();
+    
     app.use(kaizen.log());
     
     //your routes here
@@ -29,16 +31,18 @@
     var config = {
         style: 'railscasts'
     };
-
-    app.use(kaizen.log(config));
+    
+    var kaizen = new Kaizen(config);
+    
+    app.use(kaizen.log());
     
     //your routes here
     
-    app.use(kaizen.error(config));
+    app.use(kaizen.error());
     
 ##### Use your color scheme
-
-    app.use(kaizen.log({
+    
+    var config = {
         style: {
             '00': '#001100',
             '01': '#003300',
@@ -57,7 +61,13 @@
             '0E': '#00bb00',
             '0F': '#005500'
         }
-    }));
+    };
+    
+    var kaizen = new Kaizen(config);
+    
+    app.use(kaizen.log());
+    
+    
 ##### Write to MongoDB
     
     var kaizen = require('kaizen');
@@ -69,20 +79,21 @@
         stdout: false,
         style: 'railscasts'
     }
+    var kaizen = new Kaizen(config, k_mongodb);
 
-    app.use(kaizen.log(config, k_mongodb));
+    app.use(kaizen.log());
     
     //your routes here
     
-    app.use(kaizen.error(config, k_mongodb));
+    app.use(kaizen.error());
     
 ##### Create your own Adapter
 
-    // Write a module which exports 3 functions: connect(), update() and save() 
+    // Write a module which exports 2 functions: connect() and save() 
     
     exports.connect = function(config) {
         // handle the connection to DB
-        // config arg is the global config object passed during kaizen init stage
+        // config arg is the one you passed to Kaizen constructor
         // example: {
         //        uri: 'mongodb://user:password@localhost/yourdb',
         //        collection: 'foobar',
@@ -92,8 +103,8 @@
     };
     
     exports.save = function(obj) {
-        // handles req parsing/saving to DB
-        // example:
+        // handles req,res and error messages parsing/saving to DB
+        // obj example:
         // {
         //   "req": {
         //     "headers": {
@@ -110,17 +121,16 @@
         // }
 
     };
-    
-    exports.update = function(obj) {
-        // this function updates the original obj by adding res
-        // this way req and res are stored as one entity and 
-    };
 
     // require and pass it to kaizen with your config options:
     var kaizen = require('kaizen');
     var yourmod = require('yourmod');
 
     app.use(kaizen.log({your:conf}, yourmod));
+    
+sample mongodb adapter for reference: [https://github/Shoen/kaizen-mongodb][3]
+
 
   [1]: http://expressjs.com
   [2]: http://chriskempson.github.io/base16/
+  [3]: https://github/Shoen/kaizen-mongodb
