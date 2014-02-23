@@ -5,7 +5,6 @@ var ansi = require('ansi'),
     Adapter = require('./lib/adapter'),
     styles = require('./lib/styles');
 
-
 function toTitleCase(str) {
     return str.replace(/(?:^|-)\w/g, function(match) {
         return match.toUpperCase();
@@ -74,99 +73,94 @@ function printErr(err, base) {
 
 }
 
-exports.error = function(user_config, adapter) {
-    var config = {
-        style: 'default',
-        stdout: true
-    },
-        base;
-
-    _.extend(config, user_config);
-
-    if (!_.isUndefined(adapter))
-        var db = new Adapter(adapter, config);
-
-    _.isObject(config.style) ? base = config.style : base = styles[config.style]
-    return function(err, req, res, next) {
-        var error = {
-            message: err.message,
-            stack: err.stack
+var Kaizen = augment(Object, function() {
+    this.constructor = function(config, adapter) {
+        this.config = {
+            style: 'default',
+            stdout: true
         };
+        this.adapter = adapter;
+        this.base;
 
-        if (config.stdout)
-            printErr(error, base);
+        _.extend(this.config, config);
 
         if (!_.isUndefined(adapter))
-            db.save(error);
+            this.db = new Adapter(adapter, this.config);
 
-
-        next(err);
+        _.isObject(this.config.style) ? this.base = this.config.style : this.base = styles[this.config.style]
     };
-};
 
-
-
-exports.log = function(user_config, adapter) {
-    var config = {
-        style: 'default',
-        stdout: true
-    },
-        base;
-
-    _.extend(config, user_config);
-
-    if (!_.isUndefined(adapter))
-        var db = new Adapter(adapter, config);
-
-    _.isObject(config.style) ? base = config.style : base = styles[config.style]
-    return function(req, res, next) {
-        var transaction = {
-            req: {
-                headers: req.headers,
-                params: req.params,
-                body: req.body,
-                method: req.method,
-                url: req.originalUrl,
-                protocol: req.protocol,
-                version: req.httpVersion
-            }
-        };
-        var end = res.end;
-        var write = res.write;
-        var chunks = '';
-
-        if (!_.isUndefined(adapter))
-            db.save(transaction);
-
-        if (config.stdout)
-            printReq(transaction.req, base);
-
-        res.write = function(chunk) {
-            chunks += chunk;
-            write.apply(res, arguments);
-        };
-
-        res.end = function(chunk) {
-            if (chunk)
-                chunks += chunk;
-
-            var body = chunks.toString('utf8');
-            transaction.res = {
-                statusCode: res.statusCode,
-                headers: res._headers,
-                body: body,
-                protocol: req.protocol,
-                version: req.httpVersion
+    this.error = function() {
+        var self = this;
+        return function(err, req, res, next) {
+            self.transaction.error = {
+                message: err.message,
+                stack: err.stack
             };
 
-            if (!_.isUndefined(adapter))
-                db.update(transaction);
+            if (!_.isUndefined(self.adapter))
+                self.db.save(self.transaction);
 
-            if (config.stdout)
-                printRes(transaction.res, base);
+            if (self.config.stdout)
+                printErr(self.transaction.error, self.base);
 
-            end.apply(res, arguments);
+            next(err);
         };
-        next();
     };
-};
+
+    this.log = function() {
+        var self = this;
+        return function(req, res, next) {
+            self.transaction = {
+                req: {
+                    headers: req.headers,
+                    params: req.params,
+                    body: req.body,
+                    method: req.method,
+                    url: req.originalUrl,
+                    protocol: req.protocol,
+                    version: req.httpVersion
+                }
+            };
+            var end = res.end;
+            var write = res.write;
+            var chunks = '';
+
+            if (!_.isUndefined(self.adapter))
+                self.db.save(self.transaction);
+
+            if (self.config.stdout)
+                printReq(self.transaction.req, self.base);
+
+            res.write = function(chunk) {
+                chunks += chunk;
+                write.apply(res, arguments);
+            };
+
+            res.end = function(chunk) {
+                if (chunk)
+                    chunks += chunk;
+
+                var body = chunks.toString('utf8');
+                self.transaction.res = {
+                    statusCode: res.statusCode,
+                    headers: res._headers,
+                    body: body,
+                    protocol: req.protocol,
+                    version: req.httpVersion
+                };
+
+                if (!_.isUndefined(self.adapter))
+                    self.db.save(self.transaction);
+
+                if (self.config.stdout)
+                    printRes(self.transaction.res, self.base);
+
+                end.apply(res, arguments);
+            };
+            next();
+        };
+    };
+});
+
+module.exports = Kaizen;
