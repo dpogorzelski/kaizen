@@ -128,7 +128,7 @@
 
     app.use(kaizen.log({your:conf}, yourmod));
 ```    
-sample mongodb adapter for reference: [https://github/Shoen/kaizen-mongodb][3]
+sample mongodb adapter for reference: [https://github.com/Shoen/kaizen-mongodb][3]
 
 
   [1]: http://expressjs.com
