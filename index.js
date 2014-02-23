@@ -1,8 +1,10 @@
 var ansi = require('ansi'),
     cursor = ansi(process.stdout),
     _ = require('underscore'),
+    augment = require('augment'),
     Adapter = require('./lib/adapter'),
     styles = require('./lib/styles');
+
 
 function toTitleCase(str) {
     return str.replace(/(?:^|-)\w/g, function(match) {
