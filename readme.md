@@ -133,4 +133,4 @@ sample mongodb adapter for reference: [https://github.com/Shoen/kaizen-mongodb][
 
   [1]: http://expressjs.com
   [2]: http://chriskempson.github.io/base16/
-  [3]: https://github/Shoen/kaizen-mongodb
+  [3]: https://github.com/Shoen/kaizen-mongodb
