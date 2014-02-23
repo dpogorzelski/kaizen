@@ -15,7 +15,7 @@
     
 ### Usage
 ##### Basic
-
+```javascript
     var kaizen = require('kaizen');
     
     var kaizen = new Kaizen();
@@ -25,9 +25,9 @@
     //your routes here
     
     app.use(kaizen.error());
-    
+```    
 ##### Choose a different color scheme
-
+```javascript
     var config = {
         style: 'railscasts'
     };
@@ -39,9 +39,9 @@
     //your routes here
     
     app.use(kaizen.error());
-    
+```    
 ##### Use your color scheme
-    
+```javascript    
     var config = {
         style: {
             '00': '#001100',
@@ -66,10 +66,10 @@
     var kaizen = new Kaizen(config);
     
     app.use(kaizen.log());
-    
+```    
     
 ##### Write to MongoDB
-    
+```javascript    
     var kaizen = require('kaizen');
     var k_mongodb = require('kaizen-mongodb');
     
@@ -86,9 +86,9 @@
     //your routes here
     
     app.use(kaizen.error());
-    
+```    
 ##### Create your own Adapter
-
+```javascript
     // Write a module which exports 2 functions: connect() and save() 
     
     exports.connect = function(config) {
@@ -127,7 +127,7 @@
     var yourmod = require('yourmod');
 
     app.use(kaizen.log({your:conf}, yourmod));
-    
+```    
 sample mongodb adapter for reference: [https://github/Shoen/kaizen-mongodb][3]
 
 
