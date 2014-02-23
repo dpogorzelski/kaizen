@@ -126,9 +126,9 @@ exports.save = function(obj) {
 var kaizen = require('kaizen');
 var yourmod = require('yourmod');
 
-var kaizen = new Kaizen(config, k_mongodb);
+var kaizen = new Kaizen(config, yourmod);
 
-app.use(kaizen.log();
+app.use(kaizen.log());
 ```    
 sample mongodb adapter for reference: [https://github.com/Shoen/kaizen-mongodb][3]
 
